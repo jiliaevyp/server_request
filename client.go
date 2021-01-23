@@ -1,4 +1,4 @@
-package main
+package client
 
 import (
 	"fmt"
@@ -13,7 +13,7 @@ import (
 // серверу будет отправляться запрос
 // с помощью вызова io.Copy(os.Stdout, conn) выводим полученный ответ на консоль.
 
-func main() {
+func client() {
 	conn, err := net.Dial("tcp", "127.0.0.1:4545")
 	if err != nil {
 		fmt.Println(err)
