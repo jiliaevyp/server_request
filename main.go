@@ -3,21 +3,25 @@ package main
 import (
 	"errors"
 	"fmt"
-	//"net/http"
+	"io"
+	"net"
 	"os"
 	"strconv"
-	//"net"
 )
 
 var (
 	addrWeb, webPort, requestMessage, _network, _port string
-
-	ErrInvalidAddrWeb = errors.New("invalid web server")
-	ErrInvalidPort    = errors.New("invalid port number")
-	ErrInvalidAnswer = errors.New("invalid answer server")
-	ErrInvalidListen = errors.New("invalid listen server")
+	errServ                                           int
+	ErrInvalidAddrWeb                                 = errors.New("invalid web server")
+	ErrInvalidPort                                    = errors.New("invalid port number")
+	ErrInvalidAnswer                                  = errors.New("invalid answer server")
+	ErrInvalidListen                                  = errors.New("invalid listen server")
 )
 
+const (
+	textAnswer    = "Hello, I am a server. I have request!"
+	requestAnswer = "I'm server. My answer is:"
+)
 
 // ****************проверка корректности адреса web сервера *************
 // *********** флаги адреса при анализе массива байт date[i]*********
@@ -28,17 +32,17 @@ var (
 // если эти флаги установлены то адрес корректен
 
 //func check(data []byte) int { // пока игнорируем
-	//err := 0
-	// анализ байт адреса
-	//_network := string(data[0:4])
-	//localhost := string(data[0:9])
-	//fmt.Println("www=", www, "localhost=", localhost)
-	//if www == "www." || localhost == "localhost" {
-	//err = 0
-	//} else {
-	//err = 1
-	//}
-	//return err
+//err := 0
+// анализ байт адреса
+//_network := string(data[0:4])
+//localhost := string(data[0:9])
+//fmt.Println("www=", www, "localhost=", localhost)
+//if www == "www." || localhost == "localhost" {
+//err = 0
+//} else {
+//err = 1
+//}
+//return err
 //}
 
 func inpAddrServer() (string, int) {
@@ -70,16 +74,16 @@ func inpPort() (string, int) {
 	res, err := strconv.ParseFloat(webPort, 16)
 	res = res + 1
 	if err != nil || len(webPort) != 4 {
-		return ":"+ webPort, 1
+		return ":" + webPort, 1
 	} else {
-		return ":"+ webPort, 0
+		return ":" + webPort, 0
 	}
 }
 
 func start() int {
 	var komand string
 	fmt.Println("-------------------------------------------------")
-	fmt.Println("Сервер: ", _network + _port)
+	fmt.Println("Сервер: ", _network+_port)
 	fmt.Println("-------------------------------------------------")
 	fmt.Print("Запускаю? (Y)   ", "\n")
 	fmt.Scanf(
@@ -107,20 +111,16 @@ func start() int {
 //Listener может представлять тип net.TCPListener или net.UnixListener
 //(оба этих типа реализуют интерфейс net.Listener).
 
-
-func onserver() int {
-    _end := 0
+func _server() {
+	var _answer, _answerServer string
+	errServ = 0
 	//message := textAnswer   // сообщение сервера после запуска
-	//listener, err := net.List(_network, _port) // тип сети и порт
-
-	//if err != nil {
-	//	fmt.Println(ErrInvalidAnswer)
-	fmt.Scanf(
-		"%s\n",
-		&_end,
-	)
-		return _end//1
-	//}
+	listener, err := net.Listen(_network, _port) // тип сети и порт
+	if err != nil {
+		fmt.Println(ErrInvalidAnswer)
+		errServ = 1
+		return
+	}
 	// Вначале в функции net.Listen("tcp", ":4545") устанавливается 4545 порт для прослушивания
 	//подключений по протоколу TCP.
 	//После вызова этой функции сервер запущен и готов принимать подключения.
@@ -131,18 +131,43 @@ func onserver() int {
 	//Поскольку данный метод принимает срез байтов,
 	//то любые сообщения надо транслировать в срез байтов: conn.Write([]byte(message))
 
-	//defer listener.Close() // прослушивание порта _port
-	//fmt.Println(textAnswer, "сеть = ", _network, "порт = ", _port)
-	//for {
-	//	conn, err := listener.Accept() // conn = срез байт из запроса  через _port
-	//	if err != nil {
-	//		fmt.Println(ErrInvalidListen)
-	//		return 1
-	//	}
-	//	conn.Write([]byte(requestAnswer)) // ответ сервера на клиентский запрос
-	//	conn.Close()
+	defer listener.Close() // прослушивание порта _port
+	fmt.Println(textAnswer, "\n", "network= ", _network, "порт = ", _port)
+	fmt.Println("Answer, please!")
+	for {
+		conn, err := listener.Accept() // conn = срез байт из запроса  через _port
+		if err != nil {
+			fmt.Println(ErrInvalidListen)
+			errServ = 1
+			return
+		}
+		fmt.Scanf(
+			"%s\n",
+			_answer,
+		)
+		_answerServer = requestAnswer + "\n" + _answer
+		conn.Write([]byte(_answerServer)) // ответ сервера на клиентский запрос
+		conn.Close()
 
-	//}
+	}
+}
+
+// client server
+// сервер запущен на локальном компьтере на порте 4545
+// клиент подлючается к этому адресу: net.Dial("tcp", "127.0.0.1:4545")
+// серверу будет отправляться запрос
+// с помощью вызова io.Copy(os.Stdout, conn) выводим полученный ответ на консоль.
+
+func _client() {
+	conn, err := net.Dial("tcp", "127.0.0.1:4545")
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	defer conn.Close()
+
+	io.Copy(os.Stdout, conn)
+	fmt.Println("\nDone", "server answer!")
 }
 
 func main() {
@@ -150,58 +175,55 @@ func main() {
 	var (
 		err int
 	)
-	_network      = "tcp"
-	_port         = ":4545"
-	textAnswer    := "Hello, I am a server"
-	//requestAnswer := "I'm server. It's my answer!"
+	_network = "tcp"
+	_port = "127.0.0.1:4545"
 	addrWeb = ""
-	//requestMessage = ""
-	komand = "Y"
-	for komand == "Y" || komand == "y" || komand == "Н" || komand == "н" {
-		fmt.Println("------------------------------------")
-		fmt.Println("|  Запуск Go server                |")
-		fmt.Println("|  Запускать, не перезапускать!    |")
-		fmt.Println("|                                  |")
-		fmt.Println("|   (c) jiliaevyp@gmail.com        |")
-		fmt.Println("------------------------------------")
-		err = 1
-		for err == 1 {
-			fmt.Print("Введите адрес сервера:	")
-			_network, err = inpAddrServer()
-			if err == 1 {
-				fmt.Println("Aдрес некорректен")
-			}
+	requestMessage = ""
+	fmt.Println("------------------------------------")
+	fmt.Println("|  Запуск Go server                |")
+	fmt.Println("|  Запускать, не перезапускать!    |")
+	fmt.Println("|                                  |")
+	fmt.Println("|   (c) jiliaevyp@gmail.com        |")
+	fmt.Println("------------------------------------")
+	err = 1
+	for err == 1 {
+		fmt.Print("Введите адрес сервера:	")
+		_network, err = inpAddrServer()
+		if err == 1 {
+			fmt.Println("Aдрес некорректен")
 		}
-		err = 1
-		for err == 1 {
-			fmt.Print("Введите номер порта:	")
-			_port, err = inpPort()
-			if err == 1 {
-				fmt.Println("Порт некорректен")
-			}
-		}
-		err =start()
-		if err == 0 {
-			err = onserver()
-			if err == 1 {
-				fmt.Print("*** Ошибка при запуске сервера ***", "\n", "\n")
-			} else {
-				fmt.Print("---------------------------", "\n")
-				fmt.Print("\n", textAnswer, ":   ", _network + _port, "\n", "\n")
-				fmt.Print("---------------------------", "\n")
-			}
-		}
+	}
+	err = 1
+	for err == 1 {
+		fmt.Print("Введите номер порта:	")
+		_port, err = inpPort()
+		if err == 1 {
+			fmt.Println("Порт некорректен")
 
-		fmt.Print("Продолжить? (Y)   ")
-		fmt.Println("Закончить?  (Enter)")
-		komand = ""
-		fmt.Scanf(
-			"%s\n",
-			&komand,
+		}
+	}
+	go _server()
+	if errServ == 0 {
+		komand = "Y"
+		for komand == "Y" || komand == "y" || komand == "Н" || komand == "н" {
+			_client()
+			fmt.Print("---------------------------", "\n")
+			fmt.Print("\n", textAnswer, ":   ", _network+_port, "\n", "\n")
+			fmt.Print("---------------------------", "\n")
+
+			fmt.Print("Продолжить? (Y)   ")
+			fmt.Println("Закончить?  (Enter)")
+			komand = ""
+			fmt.Scanf(
+				"%s\n",
+				&komand,
 			)
 		}
+	} else {
+		fmt.Println("Didn't server connect!")
+
+	}
+
 	fmt.Println("Рад был с Вами пработать!")
 	fmt.Print("Обращайтесь в любое время без колебаний!", "\n", "\n")
 }
-
-
