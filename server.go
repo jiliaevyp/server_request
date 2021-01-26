@@ -3,10 +3,19 @@ package main
 import (
 	"errors"
 	"fmt"
-	//"io"
+	"io"
 	"net"
 	"os"
 	"strconv"
+)
+
+mport (
+"errors"
+"fmt"
+"io"
+"net"
+"os"
+"strconv"
 )
 
 var (
@@ -97,72 +106,10 @@ func _server() {
 			errServ = 1
 			return
 		}
-		go handleConnect(conn) // запуск обработчика запросов сервера
-		//conn.Write([]byte(requestAnswer)) // ответ сервера на клиентский запрос
-		//conn.Close()
-
+		conn.Write([]byte(requestAnswer)) // ответ сервера на клиентский запрос
+		conn.Close()
+		//_ready =
 	}
-}
-
-// Обработчик запросов сервера
-func handleConnect(conn net.Conn) {
-	defer conn.Close()
-	for {
-		input := make([]byte, (1024 * 4)) // считываем полученные в запросе байты данных
-		n, err := conn.Read(input)
-		if n == 0 || err != nil {
-			fmt.Println("Read error:", err)
-			break
-		}
-		requestText := string(input[0:n])
-		answerText := "На запрос " + requestText + "---> Ответ сервера: Все ништяк!"
-		conn.Write([]byte(answerText))
-	}
-}
-
-// client server
-// сервер запущен на локальном компьтере на порте 4545
-// клиент подлючается к этому адресу: net.Dial("tcp", ":4545")
-// серверу будет отправляться запрос
-// с помощью вызова io.Copy(os.Stdout, conn) выводим полученный ответ на консоль.
-
-func _client() int {
-	conn, err := net.Dial(_network, _port)
-	if err != nil {
-		fmt.Println(err)
-		return 1
-	}
-	defer conn.Close()
-	for {
-		var source string
-		fmt.Print("Введи запрос серверу:" + "    (end - выход)")
-		fmt.Scanf(
-			"%s\n",
-			&source,
-		)
-		if source == "end" || source == "утв" {
-			fmt.Print("Конец работы:")
-			return 1
-		}
-		if err != nil {
-			fmt.Println("Некорректный ввод", err)
-			continue
-		}
-		if n, err := conn.Write([]byte(source)); n == 0 || err != nil {
-			fmt.Println(err)
-			return 0
-		}
-		fmt.Println("Ответ сервера: ")
-		buff := make([]byte, 1024)
-		n, err := conn.Read(buff)
-		if err != nil {
-			break
-		}
-		fmt.Println(string(buff[0:n]))
-	}
-	//io.Copy(os.Stdout, conn)
-	//fmt.Println("\nDone", "server answer!", "\n")
-	return 1
 }
 
 func _beg() {
@@ -175,7 +122,7 @@ func _beg() {
 }
 
 func main() {
-	var komand string
+	var komand, _stop string
 	err := 1
 	_beg() // заголовок
 	for err == 1 {
@@ -193,25 +140,21 @@ func main() {
 			fmt.Println(ErrInvalidPort)
 		}
 	}
-	go _server() // запуск сервера
-	if errServ == 0 {
-		komand = "Y"
-		for komand == "Y" || komand == "y" || komand == "Н" || komand == "н" {
-			fmt.Println("Сделать запрос? (Y)   ")
-			fmt.Scanf(
-				"%s\n",
-				&komand,
-			)
-			fmt.Println()
-			if komand == "Y" || komand == "y" || komand == "Н" || komand == "н" {
-				err = _client()
-			}
-			if err == 1 {
-				fmt.Println("\n", "Рад был с Вами пработать!")
-				fmt.Print("Обращайтесь в любое время без колебаний!", "\n", "\n")
-			}
-		}
-	} else {
+	go _server()
+	for errServ == 0 {
+		fmt.Println("Для останова нажмите любую клавишу")
+		fmt.Scanf(
+			"%s\n",
+			&_stop)
+		fmt.Println("Сервер остановлен ")
+		fmt.Println("\n", "Рад был с Вами пработать!")
+		fmt.Print("Обращайтесь в любое время без колебаний!", "\n", "\n")
+		return
+	}
 		fmt.Println(ErrInvalidServerListen)
+		fmt.Println("\n", "Выход по ошибке!")
+		fmt.Println("\n", "Рад был с Вами пработать!")
+		fmt.Print("Обращайтесь в любое время без колебаний!", "\n", "\n")
 	}
 }
+
